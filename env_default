@@ -22,3 +22,10 @@ SERVER_PORT=8100
 # ── 代理（可选）─────────────────────────────────────────
 HTTP_PROXY=
 HTTPS_PROXY=
+
+# ── 数据库 (从旧后端迁移) ──────────────────────────────
+PGSQL_HOST=192.168.10.168
+PGSQL_PORT=5432
+PGSQL_USER=postgres
+PGSQL_PASSWORD=xxxx
+PGSQL_DB=exmemo

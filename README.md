@@ -106,3 +106,7 @@ uvicorn main:app --host 0.0.0.0 --port 8100 --reload
 
 - [ ] **鉴权**：为接口加 `Authorization: Bearer <token>` 验证，token 在 `.env` 中配置
 - [ ] **与 exmemo 主项目合并**：作为 exmemo 的一个子服务纳入其 `docker-compose.yml`
+
+## 注意
+
+- 在一些临时代码中注释：“先写死”
