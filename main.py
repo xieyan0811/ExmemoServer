@@ -28,21 +28,39 @@ def upload_note(title: str, text: str, db: Session = Depends(get_db)):
     try:
         from datetime import datetime
         addr = f"record_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
-        new_entry = models.StoreEntry(
+        # 主记录 (block_id = 0)，原本应为摘要，我们先简单截断前文
+        entry_main = models.StoreEntry(
             title=title,
-            raw=text,
+            raw=text[:200],  # 截断部分作为临时摘要
             etype="record",
             source="exrecord",
             atype="subjective", # 先写死，后续从认证系统获取
             ctype="工作思考", # 先写死，后续从认证系统获取
             addr=addr, # 先写死，后续从认证系统获取
             user_id='谢彦', # 先写死，后续从认证系统获取
+            block_id=0,
             created_time=datetime.utcnow()
         )
-        db.add(new_entry)
+        
+        # 正文记录 (block_id = 1)，用于前端读取完整内容
+        entry_content = models.StoreEntry(
+            title=title,
+            raw=text,
+            etype="record",
+            source="exrecord",
+            atype="subjective",
+            ctype="工作思考",
+            addr=addr,
+            user_id='谢彦',
+            block_id=1,
+            created_time=datetime.utcnow()
+        )
+
+        db.add(entry_main)
+        db.add(entry_content)
         db.commit()
-        db.refresh(new_entry)
-        return {"status": "success", "id": new_entry.idx, "title": new_entry.title}
+        db.refresh(entry_main)
+        return {"status": "success", "id": entry_main.idx, "title": entry_main.title}
     except Exception as e:
         db.rollback()
         logging.error(f"Error in upload_note: {str(e)}", exc_info=True)
