@@ -1,10 +1,11 @@
 import json
 import os
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from openai import OpenAI
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from auth import verify_token
 
 load_dotenv()
 
@@ -32,6 +33,7 @@ def get_client() -> OpenAI:
 
 class OrganizeRequest(BaseModel):
     text: str
+    token: str
 
 
 class OrganizeResponse(BaseModel):
@@ -44,9 +46,14 @@ async def organize(req: OrganizeRequest):
     """
     接收语音识别的原始文字，用 LLM 整理成标题 + 正文后返回。
 
-    - 请求：{"text": "原始识别文字"}
+    - 请求：{"text": "原始识别文字", "token": "验证令牌"}
     - 返回：{"title": "标题", "content": "整理后的正文"}
     """
+    # Token验证
+    import os
+    expected_token = os.getenv("API_TOKEN", "800811")
+    if req.token != expected_token:
+        raise HTTPException(status_code=401, detail="Invalid token")
     try:
         response = get_client().chat.completions.create(
             model=os.getenv("LLM_MODEL", "gpt-4o-mini"),

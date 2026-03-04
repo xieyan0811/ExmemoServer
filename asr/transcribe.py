@@ -1,9 +1,10 @@
 import os
 import tempfile
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from openai import OpenAI
 from dotenv import load_dotenv
+from auth import verify_token
 
 load_dotenv()
 
@@ -21,11 +22,11 @@ def get_client() -> OpenAI:
 
 
 @router.post("/transcribe")
-async def transcribe(file: UploadFile = File(...)):
+async def transcribe(file: UploadFile = File(...), _: bool = Depends(verify_token)):
     """
     接收音频文件，调用 OpenAI Whisper API 进行语音识别，返回识别文字。
 
-    - 支持格式：m4a、mp3、wav、webm、ogg 等 Whisper 支持的格式
+    - 请求：multipart/form-data，字段名 file（音频文件）和 token（验证令牌）
     - 返回：{"text": "识别出的文字"}
     """
     suffix = os.path.splitext(file.filename or "audio")[1] or ".m4a"
