@@ -54,15 +54,21 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 ### 2. 启动服务
 
+> **重要提示**：首次部署时，由于需要构建 Docker 镜像，请使用 `--build` 参数。
+
 **开发模式**（代码修改后自动热重载，推荐本地调试使用）：
 
 ```bash
 docker-compose --profile development up
 ```
 
-**生产模式**（使用预构建镜像，稳定运行）：
+**生产模式**（自动构建并稳定运行）：
 
 ```bash
+# 首次部署或需要重新构建时
+docker-compose --profile production up --build -d
+
+# 后续启动（镜像已存在）
 docker-compose --profile production up -d
 ```
 
@@ -102,6 +108,39 @@ uvicorn main:app --host 0.0.0.0 --port 8100 --reload
 - Docker + Docker Compose，或 Python 3.11+
 - 网络可访问 OpenAI API（或配置代理 / 自定义 base URL）
 
+## 故障排除
+
+### Docker 镜像拉取失败
+
+如果遇到以下错误：
+```
+ERROR: pull access denied for exmemoserver, repository does not exist or may require 'docker login'
+```
+
+**解决方案**：使用 `--build` 参数进行本地构建
+```bash
+# 生产环境首次部署
+docker-compose --profile production up --build -d
+
+# 开发环境
+docker-compose --profile development up --build
+```
+
+### 端口冲突
+
+如果 8100 端口被占用，可在 `.env` 文件中修改：
+```
+SERVER_PORT=8101
+```
+
+### 网络问题
+
+如果无法访问 OpenAI API，可以配置代理：
+```bash
+# 在 .env 中添加
+HTTP_PROXY=http://your-proxy:port
+OPENAI_BASE_URL=https://your-custom-api-endpoint/v1
+```
 ## TODO
 
 - [ ] **鉴权**：为接口加 `Authorization: Bearer <token>` 验证，token 在 `.env` 中配置
