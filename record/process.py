@@ -32,7 +32,7 @@ def get_client() -> OpenAI:
 
 
 class ProcessResponse(BaseModel):
-    text: str
+    raw_text: str
     title: str
     content: str
 
@@ -70,7 +70,7 @@ async def process(file: UploadFile = File(...)):
         )
         result = json.loads(response.choices[0].message.content)
         return ProcessResponse(
-            text=raw_text,
+            raw_text=raw_text,
             title=result["title"],
             content=result["content"],
         )
