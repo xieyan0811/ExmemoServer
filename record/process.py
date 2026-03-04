@@ -2,7 +2,7 @@ import json
 import os
 import tempfile
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from openai import OpenAI
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 router = APIRouter(prefix="/record", tags=["record"])
+
+# 默认token
+DEFAULT_TOKEN = "800811"
 
 _client: OpenAI | None = None
 
@@ -38,13 +41,16 @@ class ProcessResponse(BaseModel):
 
 
 @router.post("/process", response_model=ProcessResponse)
-async def process(file: UploadFile = File(...)):
+async def process(file: UploadFile = File(...), token: str = Form(...)):
     """
     接收音频文件，内部串联 ASR → LLM，一次返回全部结果。
 
-    - 请求：multipart/form-data，字段名 file，支持 m4a、mp3、wav 等格式
+    - 请求：multipart/form-data，字段名 file（音频文件）和 token（验证令牌）
     - 返回：{"text": "原始识别文字", "title": "标题", "content": "整理后正文"}
     """
+    # Token验证
+    if token != DEFAULT_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid token")
     suffix = os.path.splitext(file.filename or "audio")[1] or ".m4a"
     tmp_path = None
     try:
