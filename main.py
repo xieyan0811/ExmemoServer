@@ -4,7 +4,7 @@ from asr.transcribe import router as asr_router
 from llm.organize import router as llm_router
 from record.process import router as record_router
 from database import engine, get_db
-from auth import verify_token
+from auth import verify_token_query
 import models
 
 # 如果数据库不存表，初始化表结构（由于是连接现有库，可省，但留做保险）
@@ -21,9 +21,11 @@ def health():
     return {"status": "ok"}
 
 @app.post("/api/entry/data")
-def upload_note(title: str, text: str, db: Session = Depends(get_db), _: bool = Depends(verify_token)):
+@app.get("/api/entry/data")  
+def upload_note(title: str, text: str, db: Session = Depends(get_db), _: bool = Depends(verify_token_query)):
     """
     第一步短期产出测试：全新的上传 API，用于接收 ExRecord 文本并直传 PostgreSQL 库。
+    支持GET和POST两种方式，token通过查询参数传递。
     """
     import logging
     try:
