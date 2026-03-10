@@ -19,7 +19,14 @@ ORGANIZE_PROMPT = """\
 请你完成以下工作：
 1. 将原文整理成通顺的书面文字，去除语气词和明显的冗余重复
 2. 提炼一个简短的标题（不超过 20 字）
-3. 仅以 JSON 格式返回，结构为：{"title": "...", "content": "..."}
+3. 判断内容类别，从以下选项中选一个：
+   - "thinking"：思考、逻辑推演、分析
+   - "memory"：需要记住的信息，如密码、账号、地址等
+   - "quote"：金句、名言、值得收藏的话
+   - "meeting"：会议记录、讨论内容
+   - "todo"：待办事项、任务、计划
+   - null：无法归类或不确定
+4. 仅以 JSON 格式返回，结构为：{"title": "...", "content": "...", "category": "..."}（category 值为英文字符串或 null）
 不要输出任何 JSON 以外的内容。\
 """
 
@@ -32,10 +39,14 @@ def get_client() -> OpenAI:
     return _client
 
 
+VALID_CATEGORIES = {"thinking", "memory", "quote", "meeting", "todo"}
+
+
 class ProcessResponse(BaseModel):
     raw_text: str
     title: str
     content: str
+    category: str | None = None
 
 
 @router.post("/process", response_model=ProcessResponse)
@@ -70,10 +81,13 @@ async def process(file: UploadFile = File(...), _: bool = Depends(verify_token))
             ],
         )
         result = json.loads(response.choices[0].message.content)
+        raw_category = result.get("category")
+        category = raw_category if isinstance(raw_category, str) and raw_category in VALID_CATEGORIES else None
         return ProcessResponse(
             raw_text=raw_text,
             title=result["title"],
             content=result["content"],
+            category=category,
         )
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=500, detail=f"LLM 返回格式解析失败: {e}")
