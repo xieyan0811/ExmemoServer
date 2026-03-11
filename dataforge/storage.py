@@ -74,4 +74,20 @@ class StorageEngine:
         except S3Error as err:
             print(f"Error deleting file {object_name}: {err}")
 
+    def get_presigned_url(self, object_name: str, expires_seconds: int = 3600) -> str:
+        """生成 MinIO 对象的预签名临时下载 URL，供客户端直连 MinIO 下载大文件。
+        expires_seconds 默认 1 小时，最大 7 天（604800 秒）。
+        """
+        from datetime import timedelta
+        try:
+            url = self.client.presigned_get_object(
+                BUCKET_NAME,
+                object_name,
+                expires=timedelta(seconds=expires_seconds),
+            )
+            return url
+        except S3Error as err:
+            print(f"Error generating presigned URL for {object_name}: {err}")
+            raise
+
 storage_engine = StorageEngine()

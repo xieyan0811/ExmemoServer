@@ -103,3 +103,7 @@ fastapi_users = FastAPIUsers[User, uuid.UUID](
 
 # 在受保护的路由中使用：user: User = Depends(current_active_user)
 current_active_user = fastapi_users.current_user(active=True)
+
+# 可选鉴权：有 JWT Token 时解析用户，无 Token 时返回 None
+# 用于同时兼容新端（JWT）和旧端（user_id 查询参数）的接口
+optional_current_user = fastapi_users.current_user(optional=True)

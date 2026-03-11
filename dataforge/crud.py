@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from models import StoreEntry
 import uuid
 import datetime
@@ -9,10 +10,38 @@ from .storage import storage_engine
 def get_node(db: Session, idx: str) -> Optional[StoreEntry]:
     return db.query(StoreEntry).filter(StoreEntry.idx == idx, StoreEntry.is_deleted == False, StoreEntry.block_id == 1).first()
 
-def get_nodes(db: Session, skip: int = 0, limit: int = 100, user_id: str = None) -> List[StoreEntry]:
+def get_nodes(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    user_id: str = None,
+    etype: str = None,
+    ctype: str = None,
+    status: str = None,
+    keyword: str = None,
+    start_date: datetime.datetime = None,
+    end_date: datetime.datetime = None,
+) -> List[StoreEntry]:
     query = db.query(StoreEntry).filter(StoreEntry.is_deleted == False, StoreEntry.block_id == 1)
     if user_id:
         query = query.filter(StoreEntry.user_id == user_id)
+    if etype:
+        query = query.filter(StoreEntry.etype == etype)
+    if ctype:
+        query = query.filter(StoreEntry.ctype == ctype)
+    if status:
+        query = query.filter(StoreEntry.status == status)
+    if keyword:
+        query = query.filter(
+            or_(
+                StoreEntry.title.ilike(f"%{keyword}%"),
+                StoreEntry.raw.ilike(f"%{keyword}%"),
+            )
+        )
+    if start_date:
+        query = query.filter(StoreEntry.created_time >= start_date)
+    if end_date:
+        query = query.filter(StoreEntry.created_time <= end_date)
     return query.order_by(StoreEntry.created_time.desc()).offset(skip).limit(limit).all()
 
 def calc_md5(content: bytes) -> str:
@@ -139,7 +168,10 @@ def create_file_entry(
     content_type: str = "application/octet-stream",
     source: str = "upload",
 ) -> StoreEntry:
-    """将上传的二进制文件存到 MinIO，并在数据库中创建对应的 StoreEntry。"""
+    """将上传的二进制文件存到 MinIO，并在数据库中创建对应的 StoreEntry。
+    与 create_note 保持一致，同时写入 block_id=0（主记录/摘要）和 block_id=1（内容记录），
+    保证旧系统（Django/exmemo）仍可正常读取。
+    """
     node_idx = uuid.uuid4()
     now = datetime.datetime.utcnow()
 
@@ -149,13 +181,14 @@ def create_file_entry(
 
     storage_engine.put_file(path, file_data, content_type)
     md5_hash = calc_md5(file_data)
+    meta = {"filename": filename, "content_type": content_type, "size": len(file_data)}
 
-    entry = StoreEntry(
+    common = dict(
         idx=node_idx,
         user_id=user_id,
         title=filename,
         raw=None,
-        meta_data={"filename": filename, "content_type": content_type, "size": len(file_data)},
+        meta_data=meta,
         etype="file",
         source=source,
         atype=None,
@@ -163,10 +196,16 @@ def create_file_entry(
         addr=filename,
         path=path,
         md5=md5_hash,
-        block_id=1,
         created_time=now,
     )
-    db.add(entry)
+
+    # block_id=0：主记录（旧系统列表/树视图读的是这条）
+    entry_main = StoreEntry(**common, block_id=0)
+    # block_id=1：内容记录（新系统 get_node / get_nodes 读的是这条）
+    entry_content = StoreEntry(**common, block_id=1)
+
+    db.add(entry_main)
+    db.add(entry_content)
     db.commit()
-    db.refresh(entry)
-    return entry
+    db.refresh(entry_main)
+    return entry_main
