@@ -129,3 +129,44 @@ def delete_node(db: Session, idx: str, hard_delete: bool = False):
         
     db.commit()
     return True
+
+
+def create_file_entry(
+    db: Session,
+    filename: str,
+    file_data: bytes,
+    user_id: str,
+    content_type: str = "application/octet-stream",
+    source: str = "upload",
+) -> StoreEntry:
+    """将上传的二进制文件存到 MinIO，并在数据库中创建对应的 StoreEntry。"""
+    node_idx = uuid.uuid4()
+    now = datetime.datetime.utcnow()
+
+    # 提取扩展名，拼装 MinIO 存储路径
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
+    path = f"upload/{now.year}/{now.month:02d}/{node_idx}.{ext}"
+
+    storage_engine.put_file(path, file_data, content_type)
+    md5_hash = calc_md5(file_data)
+
+    entry = StoreEntry(
+        idx=node_idx,
+        user_id=user_id,
+        title=filename,
+        raw=None,
+        meta_data={"filename": filename, "content_type": content_type, "size": len(file_data)},
+        etype="file",
+        source=source,
+        atype=None,
+        ctype=None,
+        addr=filename,
+        path=path,
+        md5=md5_hash,
+        block_id=1,
+        created_time=now,
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return entry

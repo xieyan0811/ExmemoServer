@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from database import get_db
@@ -7,6 +7,8 @@ from pydantic import BaseModel, UUID4
 from . import crud
 from .storage import storage_engine
 from datetime import datetime
+from auth_manager import current_active_user
+from auth_users import User
 
 router = APIRouter(
     prefix="/dataforge",
@@ -120,3 +122,34 @@ def list_notes(skip: int = 0, limit: int = 100, user_id: Optional[str] = None, d
              resp.content = n.raw[:200]
         responses.append(resp)
     return responses
+
+
+@router.post("/upload/", response_model=NoteResponse)
+async def upload_file(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(current_active_user),
+):
+    """
+    上传任意文件。
+    - 需要在请求头中携带 Authorization: Bearer <token>
+    - 文件保存至 MinIO，元信息写入数据库
+    - user_id 自动取当前登录用户的邮箱
+    """
+    file_data = await file.read()
+    if not file_data:
+        raise HTTPException(status_code=400, detail="上传的文件为空")
+
+    filename = file.filename or "unnamed"
+    content_type = file.content_type or "application/octet-stream"
+
+    entry = crud.create_file_entry(
+        db=db,
+        filename=filename,
+        file_data=file_data,
+        user_id=user.email,
+        content_type=content_type,
+        source="upload",
+    )
+    response = NoteResponse.from_orm(entry)
+    return response

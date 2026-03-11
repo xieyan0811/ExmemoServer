@@ -20,6 +20,12 @@ LLM_MODEL=gpt-4o-mini
 # API 访问令牌，用于接口鉴权
 API_TOKEN=800811
 
+# ── JWT 用户认证 ───────────────────────────────────────────
+# JWT 签名密钥（生产环境请替换为足够长的随机字符串，切勿泄露）
+JWT_SECRET=change-me-to-a-long-random-secret
+# JWT 令牌有效期（秒），默认 7 天 = 604800
+JWT_LIFETIME_SECONDS=604800
+
 # ── 服务器 ───────────────────────────────────────────────
 SERVER_PORT=8100
 
