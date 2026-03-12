@@ -9,10 +9,9 @@ from record.process import router as record_router
 from dataforge.router import router as dataforge_router
 from dataforge import crud
 from database import get_db
-from auth import verify_token_query
 import models          # noqa: F401 – 注册 StoreEntry 到 Base.metadata
 import auth_users      # noqa: F401 – 注册 User 到 Base.metadata
-from auth_users import engine_async
+from auth_users import engine_async, User
 from auth_manager import (
     auth_backend,
     fastapi_users,
@@ -84,10 +83,14 @@ def health():
     return {"status": "ok"}
 
 @app.post("/api/entry/data")
-def upload_note(body: NoteRequest, db: Session = Depends(get_db), _: bool = Depends(verify_token_query)):
+def upload_note(
+    body: NoteRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_active_user),
+):
     """
-    第一步短期产出测试：全新的上传 API，用于接收 ExRecord 文本并直传 PostgreSQL 和 Minio 库。
-    支持GET和POST两种方式，token通过查询参数传递。
+    接收 ExRecord 文本并直传 PostgreSQL 和 Minio。
+    需要 JWT 登录态，请求头携带 Authorization: Bearer <access_token>。
     """
     import logging
     try:
@@ -102,7 +105,7 @@ def upload_note(body: NoteRequest, db: Session = Depends(get_db), _: bool = Depe
             db=db,
             title=title,
             content=text,
-            user_id="谢彦",
+            user_id=user.email,
             etype="record",
             source="exrecord",
             atype="subjective",
