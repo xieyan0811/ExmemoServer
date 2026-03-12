@@ -97,7 +97,7 @@ def upload_note(
         from datetime import datetime
         title = body.title
         text = body.text
-        addr = f"record_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+        addr = f"record_{datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')}"
         
         # Now use the new dataforge crud which handles Minio Markdown storage automatically 
         # as well as the old double-block (0 and 1) storage to stay compatible.

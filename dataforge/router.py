@@ -23,10 +23,12 @@ class NoteCreate(BaseModel):
     content: str
     user_id: str = None
     etype: str = "note"
+    addr: str = None
     meta_data: dict = None
     source: str = None
     atype: str = None
     ctype: str = None
+    status: str = None
 
 
 class NoteUpdate(BaseModel):
@@ -55,18 +57,23 @@ class NoteResponse(BaseModel):
         from_attributes = True
 
 @router.post("/data/", response_model=NoteResponse)
-def create_note(note: NoteCreate, db: Session = Depends(get_db)):
-    addr = f"{note.etype}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+def create_note(
+    note: NoteCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_active_user),
+):
+    addr = note.addr or f"{note.etype}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')}"
     db_node = crud.create_note(
         db=db,
         title=note.title,
         content=note.content,
-        user_id=note.user_id,
+        user_id=user.email,
         etype=note.etype,
         meta_data=note.meta_data,
         source=note.source,
         atype=note.atype,
         ctype=note.ctype,
+        status=note.status,
         addr=addr
     )
     # Return with content

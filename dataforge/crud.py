@@ -47,7 +47,7 @@ def get_nodes(
 def calc_md5(content: bytes) -> str:
     return hashlib.md5(content).hexdigest()
 
-def create_note(db: Session, title: str, content: str, user_id: str = None, etype: str = "note", meta_data: dict = None, source: str = None, atype: str = None, ctype: str = None, addr: str = None) -> StoreEntry:
+def create_note(db: Session, title: str, content: str, user_id: str = None, etype: str = "note", meta_data: dict = None, source: str = None, atype: str = None, ctype: str = None, status: str = None, addr: str = None) -> StoreEntry:
     node_idx = uuid.uuid4()
     
     # Generate storage path: type/year/month/uuid.md
@@ -70,6 +70,7 @@ def create_note(db: Session, title: str, content: str, user_id: str = None, etyp
         source=source,
         atype=atype,
         ctype=ctype,
+        status=status,
         addr=addr,
         path=path,  # ExmemoServer only: store the minio path
         md5=md5_hash,
@@ -88,6 +89,7 @@ def create_note(db: Session, title: str, content: str, user_id: str = None, etyp
         source=source,
         atype=atype,
         ctype=ctype,
+        status=status,
         addr=addr,
         path=path,
         md5=md5_hash,
