@@ -4,7 +4,7 @@ from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 
 from asr.transcribe import router as asr_router
-from llm.organize import router as llm_router
+from llm.complete import router as llm_router
 from record.process import router as record_router
 from dataforge.router import router as dataforge_router
 from dataforge import crud
