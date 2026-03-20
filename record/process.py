@@ -2,7 +2,7 @@ import json
 import os
 import tempfile
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
+from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Form
 from openai import OpenAI
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -13,22 +13,6 @@ load_dotenv()
 router = APIRouter(prefix="/record", tags=["record"])
 
 _client: OpenAI | None = None
-
-ORGANIZE_PROMPT = """\
-你是一个笔记整理助手。用户会给你一段语音识别出的原始文字，内容可能包含口语化表达、重复词、语气词等。
-请你完成以下工作：
-1. 将原文整理成通顺的书面文字，去除语气词和明显的冗余重复
-2. 提炼一个简短的标题（不超过 20 字）
-3. 判断内容类别，从以下选项中选一个：
-   - "thinking"：思考、逻辑推演、分析
-   - "memory"：需要记住的信息，如密码、账号、地址等
-   - "quote"：金句、名言、值得收藏的话
-   - "meeting"：会议记录、讨论内容
-   - "todo"：待办事项、任务、计划
-   - null：无法归类或不确定
-4. 仅以 JSON 格式返回，结构为：{"title": "...", "content": "...", "category": "..."}（category 值为英文字符串或 null）
-不要输出任何 JSON 以外的内容。\
-"""
 
 
 def get_client() -> OpenAI:
@@ -50,7 +34,12 @@ class ProcessResponse(BaseModel):
 
 
 @router.post("/process", response_model=ProcessResponse)
-async def process(file: UploadFile = File(...), _: bool = Depends(verify_token)):
+async def process(
+    file: UploadFile = File(...),
+    system_prompt: str = Form(...),
+    user_prompt: str = Form(...),
+    _: bool = Depends(verify_token),
+):
     """
     接收音频文件，内部串联 ASR → LLM，一次返回全部结果。
 
@@ -76,8 +65,8 @@ async def process(file: UploadFile = File(...), _: bool = Depends(verify_token))
         response = get_client().chat.completions.create(
             model=os.getenv("LLM_MODEL", "gpt-4o-mini"),
             messages=[
-                {"role": "system", "content": ORGANIZE_PROMPT},
-                {"role": "user", "content": raw_text},
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt.replace("{{raw_text}}", raw_text)},
             ],
         )
         result = json.loads(response.choices[0].message.content)
